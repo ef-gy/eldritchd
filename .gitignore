@@ -1,0 +1,6 @@
+.third-party
+dependencies.mk
+eldritchd
+!include/eldritchd
+include/ef.gy
+include/asio*
