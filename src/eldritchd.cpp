@@ -1,5 +1,4 @@
 /**\file
- * \ingroup example-programmes
  *
  * \copyright
  * Copyright (c) 2015, Magnus Achim Deininger <magnus@ef.gy>
@@ -30,6 +29,10 @@
 #define ASIO_DISABLE_THREADS
 #include <ef.gy/httpd.h>
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 using namespace efgy;
 
 namespace tcp {
@@ -43,4 +46,69 @@ static httpd::servlet<stream_protocol> quit("^/quit$",
                                             httpd::quit<stream_protocol>);
 }
 
-int main(int argc, char *argv[]) { return io::main(argc, argv); }
+static asio::signal_set signals(io::service::common().get(), SIGCHLD);
+
+static bool run(std::vector<std::string> &cmd,
+                io::service &service = io::service::common());
+
+static std::vector<std::string> ocmd;
+
+static void handleSIGCHLD(const asio::error_code &error, int signal_number) {
+  int status;
+  waitpid(-1, &status, WNOHANG);
+  if (WIFEXITED(status) || WIFSIGNALED(status)) {
+    std::cout << "It died - respawning.\n";
+
+    run(ocmd);
+  } else {
+    signals.async_wait(handleSIGCHLD);
+  }
+}
+
+static bool run(std::vector<std::string> &cmd, io::service &service) {
+  service.get().notify_fork(asio::io_service::fork_prepare);
+  pid_t p = fork();
+  switch (p) {
+  case -1:
+    return false;
+  case 0:
+    service.get().notify_fork(asio::io_service::fork_child);
+    {
+      char **argv = new char *[(cmd.size() + 1)];
+      for (std::size_t i = 0; i < cmd.size(); i++) {
+        argv[i] = (char *)cmd[i].c_str();
+      }
+      argv[cmd.size()] = 0;
+      execv(argv[0], argv);
+      // ... and we should never reach this part.
+    }
+    break;
+  default:
+    service.get().notify_fork(asio::io_service::fork_parent);
+
+    ocmd = cmd;
+    signals.async_wait(handleSIGCHLD);
+
+    return true;
+  }
+
+  return false;
+}
+
+int main(int argc, char *argv[]) {
+  auto &options = cli::options<>::common();
+  auto &service = io::service::common().get();
+
+  options.apply(argc, argv);
+
+  if (options.remainder.size() == 0) {
+    std::cerr << "The stars aren't right!\n";
+    return 2;
+  } else if (!run(options.remainder)) {
+    return 1;
+  }
+
+  service.run();
+
+  return 0;
+}
