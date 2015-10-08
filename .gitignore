@@ -4,3 +4,6 @@ eldritchd
 !include/eldritchd
 include/ef.gy
 include/asio*
+doxyfile
+*.tag
+documentation

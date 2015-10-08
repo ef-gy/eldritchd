@@ -27,8 +27,10 @@
  */
 
 #define ASIO_DISABLE_THREADS
+#define _BSD_SOURCE
 #include <ef.gy/httpd.h>
 #include <eldritchd/exec.h>
+#include <unistd.h>
 
 using namespace efgy;
 
@@ -48,9 +50,12 @@ int main(int argc, char *argv[]) {
   auto &service = io::service::common().get();
 
   options.apply(argc, argv);
-
+  
   if (options.remainder.size() == 0) {
     std::cerr << "The stars aren't right!\n";
+    return 3;
+  } else if (daemon(0, 0)) {
+    std::cerr << "Couldn't turn into a daemon for some reason.\n";
     return 2;
   } else {
     eldritchd::process proc(options.remainder, io::service::common());
