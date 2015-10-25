@@ -32,13 +32,30 @@
 #include <ef.gy/cli.h>
 #include <ef.gy/server.h>
 
+#include <prometheus/metric.h>
+
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
 namespace eldritchd {
+namespace http {
+template <class transport>
+static bool servlet(
+    typename efgy::net::http::server<transport>::session &session,
+    std::smatch &) {
+  session.reply(200, "...");
+
+  return true;
+}
+
+static const std::string regex = "^/eldritchd$";
+}
+
+static prometheus::metric::counter<> spawns("eldritchd_spawns_total");
+
 class process {
-public:
+ public:
   process(std::vector<std::string> pcmd,
           efgy::io::service &pService = efgy::io::service::common())
       : cmd(pcmd), service(pService), signals(pService.get(), SIGCHLD) {}
@@ -53,33 +70,37 @@ public:
     service.get().notify_fork(asio::io_service::fork_prepare);
     pid_t p = fork();
     switch (p) {
-    case -1:
-      return false;
-    case 0:
-      service.get().notify_fork(asio::io_service::fork_child);
-      closeFDs();
-      {
-        char **argv = new char *[(cmd.size() + 1)];
-        for (std::size_t i = 0; i < cmd.size(); i++) {
-          argv[i] = (char *)cmd[i].c_str();
+      case -1:
+        return false;
+      case 0:
+        service.get().notify_fork(asio::io_service::fork_child);
+        closeFDs();
+        {
+          char **argv = new char *[(cmd.size() + 1)];
+          for (std::size_t i = 0; i < cmd.size(); i++) {
+            argv[i] = (char *)cmd[i].c_str();
+          }
+          argv[cmd.size()] = 0;
+          execv(argv[0], argv);
+          // ... and we should never reach this part.
         }
-        argv[cmd.size()] = 0;
-        execv(argv[0], argv);
-        // ... and we should never reach this part.
-      }
-      break;
-    default:
-      service.get().notify_fork(asio::io_service::fork_parent);
+        break;
+      default:
+        service.get().notify_fork(asio::io_service::fork_parent);
 
-      signals.async_wait([this](const asio::error_code &, int) { sigchld(); });
+        signals.async_wait([this](const asio::error_code &, int) {
+          sigchld();
+        });
 
-      return true;
+        spawns.inc();
+
+        return true;
     }
 
     return false;
   }
 
-protected:
+ protected:
   const std::vector<std::string> cmd;
   efgy::io::service &service;
   asio::signal_set signals;
@@ -92,7 +113,9 @@ protected:
 
       run();
     } else {
-      signals.async_wait([this](const asio::error_code &, int) { sigchld(); });
+      signals.async_wait([this](const asio::error_code &, int) {
+        sigchld();
+      });
     }
   }
 };

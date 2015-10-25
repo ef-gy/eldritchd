@@ -3,6 +3,7 @@ dependencies.mk
 eldritchd
 !include/eldritchd
 include/ef.gy
+include/prometheus
 include/asio*
 doxyfile
 *.tag

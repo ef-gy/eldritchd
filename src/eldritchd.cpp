@@ -31,30 +31,44 @@
 #include <ef.gy/httpd.h>
 #include <eldritchd/exec.h>
 #include <unistd.h>
+#include <prometheus/httpd.h>
 
 using namespace efgy;
 
 namespace tcp {
 using asio::ip::tcp;
 static httpd::servlet<tcp> quit("^/quit$", httpd::quit<tcp>);
+static httpd::servlet<tcp> eldritch(eldritchd::http::regex,
+                                    eldritchd::http::servlet<tcp>);
 }
 
 namespace unix {
 using asio::local::stream_protocol;
 static httpd::servlet<stream_protocol> quit("^/quit$",
                                             httpd::quit<stream_protocol>);
+static httpd::servlet<stream_protocol> eldritch(
+    eldritchd::http::regex, eldritchd::http::servlet<stream_protocol>);
 }
+
+static bool daemonise = false;
+
+static cli::option background(
+    "-{0,2}(no)?daemon", [](std::smatch &m)->bool {
+  daemonise = m[1] != "no";
+  return true;
+},
+    "Specify whether or not to run eldritchd in the background.");
 
 int main(int argc, char *argv[]) {
   auto &options = cli::options<>::common();
   auto &service = io::service::common().get();
 
   options.apply(argc, argv);
-  
+
   if (options.remainder.size() == 0) {
     std::cerr << "The stars aren't right!\n";
     return 3;
-  } else if (daemon(0, 0)) {
+  } else if (daemonise && daemon(0, 0)) {
     std::cerr << "Couldn't turn into a daemon for some reason.\n";
     return 2;
   } else {
