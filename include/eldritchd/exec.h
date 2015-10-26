@@ -52,13 +52,27 @@ static bool servlet(
 static const std::string regex = "^/eldritchd$";
 }
 
-static prometheus::metric::counter<> spawns("eldritchd_spawns_total");
+static prometheus::metric::counter<> spawns("eldritchd_spawns_total", {
+  "instance"
+});
+static prometheus::metric::gauge<> child_pid("eldritchd_child_pid", {
+  "instance"
+});
 
 class process {
  public:
-  process(std::vector<std::string> pcmd,
+  process(std::vector<std::string> pcmd, std::string pName = "",
           efgy::io::service &pService = efgy::io::service::common())
-      : cmd(pcmd), service(pService), signals(pService.get(), SIGCHLD) {}
+      : cmd(pcmd),
+        name(pName),
+        service(pService),
+        signals(pService.get(), SIGCHLD) {
+    static size_t instance = 0;
+    this->instance = instance++;
+    if (name == "") {
+      name = cmd[0] + "-" + std::to_string(this->instance);
+    }
+  }
 
   static void closeFDs(int from = 3) {
     for (int fd = from; fd < sysconf(_SC_OPEN_MAX); fd++) {
@@ -68,8 +82,7 @@ class process {
 
   bool run(void) {
     service.get().notify_fork(asio::io_service::fork_prepare);
-    pid_t p = fork();
-    switch (p) {
+    switch (pid = fork()) {
       case -1:
         return false;
       case 0:
@@ -92,7 +105,12 @@ class process {
           sigchld();
         });
 
-        spawns.inc();
+        spawns.labels({
+          name
+        }).inc();
+        child_pid.labels({
+          name
+        }).set(pid);
 
         return true;
     }
@@ -104,10 +122,13 @@ class process {
   const std::vector<std::string> cmd;
   efgy::io::service &service;
   asio::signal_set signals;
+  pid_t pid;
+  size_t instance;
+  std::string name;
 
   void sigchld(void) {
     int status;
-    waitpid(-1, &status, WNOHANG);
+    waitpid(pid, &status, WNOHANG);
     if (WIFEXITED(status) || WIFSIGNALED(status)) {
       std::cout << "It died - respawning.\n";
 

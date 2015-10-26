@@ -51,7 +51,7 @@ static httpd::servlet<stream_protocol> eldritch(
 }
 
 static cli::boolean daemonise(
-    "daemonise", "Specify whether or not to run eldritchd in the background.");
+    "daemonise", "Whether or not to have eldritchd run in the background.");
 
 int main(int argc, char *argv[]) {
   auto &options = cli::options<>::common();
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     std::cerr << "Couldn't turn into a daemon for some reason.\n";
     return 2;
   } else {
-    eldritchd::process proc(options.remainder, io::service::common());
+    eldritchd::process proc(options.remainder);
 
     if (!proc.run()) {
       return 1;
