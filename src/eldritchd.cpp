@@ -50,10 +50,11 @@ static httpd::servlet<stream_protocol> eldritch(
     eldritchd::http::regex, eldritchd::http::servlet<stream_protocol>);
 }
 
-static cli::boolean daemonise(
+static cli::flag<bool> daemonise(
     "daemonise", "Whether or not to have eldritchd run in the background.");
 
-static cli::string name("name", "Instance name used for monitoring output.");
+static cli::flag<std::string> name("name",
+                                   "Instance name used for monitoring output.");
 
 int main(int argc, char *argv[]) {
   auto &options = cli::options<>::common();
