@@ -29,29 +29,32 @@
 #define ASIO_DISABLE_THREADS
 #define _BSD_SOURCE
 #include <ef.gy/httpd.h>
-#include <eldritchd/exec.h>
-#include <unistd.h>
+
 #include <prometheus/httpd.h>
+
+#include <eldritchd/http.h>
+
+#include <unistd.h>
 
 using namespace efgy;
 
 namespace tcp {
 using asio::ip::tcp;
-static httpd::servlet<tcp> quit("^/quit$", httpd::quit<tcp>);
 static httpd::servlet<tcp> eldritch(eldritchd::http::regex,
                                     eldritchd::http::servlet<tcp>);
 }
 
 namespace unix {
 using asio::local::stream_protocol;
-static httpd::servlet<stream_protocol> quit("^/quit$",
+static httpd::servlet<stream_protocol> quit("/quit",
                                             httpd::quit<stream_protocol>);
-static httpd::servlet<stream_protocol> eldritch(
-    eldritchd::http::regex, eldritchd::http::servlet<stream_protocol>);
+static httpd::servlet<stream_protocol>
+    eldritch(eldritchd::http::regex, eldritchd::http::servlet<stream_protocol>);
 }
 
-static cli::flag<bool> daemonise(
-    "daemonise", "Whether or not to have eldritchd run in the background.");
+static cli::flag<bool>
+    daemonise("daemonise",
+              "Whether or not to have eldritchd run in the background.");
 
 static cli::flag<std::string> name("name",
                                    "Instance name used for monitoring output.");
@@ -63,7 +66,7 @@ int main(int argc, char *argv[]) {
   options.apply(argc, argv);
 
   if (options.remainder.size() == 0) {
-    std::cerr << "The stars aren't right!\n";
+    std::cerr << "\nThe stars aren't right!\n";
     return 3;
   } else if (daemonise && daemon(0, 0)) {
     std::cerr << "Couldn't turn into a daemon for some reason.\n";
