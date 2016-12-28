@@ -1,0 +1,9 @@
+[submodule "dependencies/libefgy"]
+	path = dependencies/libefgy
+	url = https://github.com/ef-gy/libefgy.git
+[submodule "dependencies/prometheus-client-cpp"]
+	path = dependencies/prometheus-client-cpp
+	url = https://github.com/ef-gy/prometheus-client-cpp.git
+[submodule "dependencies/asio"]
+	path = dependencies/asio
+	url = https://github.com/chriskohlhoff/asio.git
