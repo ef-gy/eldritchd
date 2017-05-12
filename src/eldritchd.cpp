@@ -11,7 +11,7 @@
 
 #define ASIO_DISABLE_THREADS
 #define _BSD_SOURCE
-#include <ef.gy/httpd.h>
+#include <cxxhttp/httpd.h>
 
 #include <prometheus/httpd.h>
 
@@ -19,6 +19,7 @@
 
 #include <unistd.h>
 
+using namespace cxxhttp;
 using namespace efgy;
 
 namespace tcp {
@@ -29,24 +30,19 @@ static httpd::servlet<tcp> eldritch(eldritchd::http::regex,
 
 namespace unix {
 using asio::local::stream_protocol;
-static httpd::servlet<stream_protocol> quit("/quit",
-                                            httpd::quit<stream_protocol>);
-static httpd::servlet<stream_protocol>
-    eldritch(eldritchd::http::regex, eldritchd::http::servlet<stream_protocol>);
+static httpd::servlet<stream_protocol> eldritch(
+    eldritchd::http::regex, eldritchd::http::servlet<stream_protocol>);
 }
 
-static cli::flag<bool>
-    daemonise("daemonise",
-              "Whether or not to have eldritchd run in the background.");
+static cli::flag<bool> daemonise(
+    "daemonise", "Whether or not to have eldritchd run in the background.");
 
 static cli::flag<std::string> name("name",
                                    "Instance name used for monitoring output.");
 
 int main(int argc, char *argv[]) {
-  auto &options = cli::options<>::common();
-  auto &service = io::service::common().get();
-
-  options.apply(argc, argv);
+  auto &service = global<cxxhttp::service>();
+  cli::options options(argc, argv);
 
   if (options.remainder.size() == 0) {
     std::cerr << "\nThe stars aren't right!\n";

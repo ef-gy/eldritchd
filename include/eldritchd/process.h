@@ -17,9 +17,9 @@
 
 #include <prometheus/metric.h>
 
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 namespace eldritchd {
 static prometheus::metric::counter<> spawns("eldritchd_spawns_total",
@@ -28,11 +28,10 @@ static prometheus::metric::gauge<> child_pid("eldritchd_child_pid",
                                              {"instance"});
 
 class process {
-public:
+ public:
   process(std::vector<std::string> pcmd, std::string pName = "",
-          efgy::io::service &pService = efgy::io::service::common())
-      : cmd(pcmd), name(pName), service(pService),
-        signals(pService.get(), SIGCHLD) {
+          cxxhttp::service &pService = efgy::global<cxxhttp::service>())
+      : cmd(pcmd), name(pName), service(pService), signals(pService, SIGCHLD) {
     static size_t instance = 0;
     this->instance = instance++;
     if (name == "") {
@@ -47,40 +46,40 @@ public:
   }
 
   bool run(void) {
-    service.get().notify_fork(asio::io_service::fork_prepare);
+    service.notify_fork(asio::io_service::fork_prepare);
     switch (pid = fork()) {
-    case -1:
-      return false;
-    case 0:
-      service.get().notify_fork(asio::io_service::fork_child);
-      closeFDs();
-      {
-        char **argv = new char *[(cmd.size() + 1)];
-        for (std::size_t i = 0; i < cmd.size(); i++) {
-          argv[i] = (char *)cmd[i].c_str();
+      case -1:
+        return false;
+      case 0:
+        service.notify_fork(asio::io_service::fork_child);
+        closeFDs();
+        {
+          char **argv = new char *[(cmd.size() + 1)];
+          for (std::size_t i = 0; i < cmd.size(); i++) {
+            argv[i] = (char *)cmd[i].c_str();
+          }
+          argv[cmd.size()] = 0;
+          execv(argv[0], argv);
+          // ... and we should never reach this part.
         }
-        argv[cmd.size()] = 0;
-        execv(argv[0], argv);
-        // ... and we should never reach this part.
-      }
-      break;
-    default:
-      service.get().notify_fork(asio::io_service::fork_parent);
+        break;
+      default:
+        service.notify_fork(asio::io_service::fork_parent);
 
-    signals
-      .async_wait([this](const asio::error_code &, int) { sigchld(); });
+        signals.async_wait(
+            [this](const asio::error_code &, int) { sigchld(); });
 
-      spawns.labels({name}).inc();
-      child_pid.labels({name}).set(pid);
+        spawns.labels({name}).inc();
+        child_pid.labels({name}).set(pid);
 
-      return true;
+        return true;
     }
 
     return false;
   }
 
-  efgy::json::value<> json(void) {
-    efgy::json::value<> r;
+  efgy::json::json json(void) {
+    efgy::json::json r;
 
     auto &p = r("process");
     p("name").toString() = name;
@@ -88,9 +87,9 @@ public:
     return r;
   }
 
-protected:
+ protected:
   const std::vector<std::string> cmd;
-  efgy::io::service &service;
+  cxxhttp::service &service;
   asio::signal_set signals;
   pid_t pid;
   size_t instance;
@@ -104,8 +103,7 @@ protected:
 
       run();
     } else {
-    signals
-      .async_wait([this](const asio::error_code &, int) { sigchld(); });
+      signals.async_wait([this](const asio::error_code &, int) { sigchld(); });
     }
   }
 };

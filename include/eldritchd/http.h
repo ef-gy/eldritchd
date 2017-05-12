@@ -12,7 +12,7 @@
 #if !defined(ELDRITCHD_HTTP_H)
 #define ELDRITCHD_HTTP_H
 
-#include <ef.gy/http.h>
+#include <cxxhttp/http.h>
 #include <ef.gy/stream-json.h>
 
 #include <eldritchd/process.h>
@@ -24,9 +24,8 @@ namespace http {
 static const std::string regex = "/eldritchd";
 
 template <class transport>
-static bool
-servlet(typename efgy::net::http::server<transport>::session &session,
-        std::smatch &) {
+static bool servlet(typename cxxhttp::http::server<transport>::session &session,
+                    std::smatch &) {
   std::ostringstream oss("");
 
   session.reply(200, oss.str());
