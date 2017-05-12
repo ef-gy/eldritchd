@@ -12,6 +12,8 @@
 #if !defined(ELDRITCHD_PROCESS_H)
 #define ELDRITCHD_PROCESS_H
 
+#include <cxxhttp/network.h>
+
 #include <ef.gy/cli.h>
 #include <ef.gy/json.h>
 
