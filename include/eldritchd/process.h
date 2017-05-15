@@ -24,10 +24,12 @@
 #include <unistd.h>
 
 namespace eldritchd {
-static prometheus::metric::counter<> spawns("eldritchd_spawns_total",
-                                            {"instance"});
-static prometheus::metric::gauge<> child_pid("eldritchd_child_pid",
-                                             {"instance"});
+static prometheus::metric::counter spawns(
+    "eldritchd_spawns_total", "Subprocess spawn count, by instance label.",
+    {"instance"});
+static prometheus::metric::gauge child_pid(
+    "eldritchd_child_pid", "Child process PID, by instance label.",
+    {"instance"});
 
 class process {
  public:

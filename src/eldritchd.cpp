@@ -13,7 +13,7 @@
 #define _BSD_SOURCE
 #include <cxxhttp/httpd.h>
 
-#include <prometheus/httpd.h>
+#include <prometheus/httpd-metrics.h>
 
 #include <eldritchd/http.h>
 

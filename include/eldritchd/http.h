@@ -24,13 +24,11 @@ namespace http {
 static const std::string regex = "/eldritchd";
 
 template <class transport>
-static bool servlet(typename cxxhttp::http::server<transport>::session &session,
+static void servlet(typename cxxhttp::http::server<transport>::session &session,
                     std::smatch &) {
   std::ostringstream oss("");
 
   session.reply(200, oss.str());
-
-  return true;
 }
 }
 }
