@@ -1,19 +1,20 @@
-/**\file
+/*
+ * See also:
+ * * Documentation: https://ef.gy/documentation/eldritchd
+ * * Source Code: https://github.com/ef-gy/eldritchd
+ * * Licence Terms: https://github.com/ef-gy/eldritchd/COPYING
  *
- * \copyright
+ * @copyright
  * This file is part of eldritchd, which is released as open source under the
  * terms of an MIT/X11-style licence, described in the COPYING file.
- *
- * \see Documentation: https://ef.gy/documentation/eldritchd
- * \see Source Code: https://github.com/ef-gy/eldritchd
- * \see Licence Terms: https://github.com/ef-gy/eldritchd/COPYING
  */
 
 #if !defined(ELDRITCHD_HTTP_H)
 #define ELDRITCHD_HTTP_H
 
-#include <cxxhttp/http.h>
-#include <ef.gy/stream-json.h>
+#include <cxxhttp/http-session.h>
+
+#include <ef.gy/json.h>
 
 #include <eldritchd/process.h>
 
@@ -23,8 +24,7 @@ namespace eldritchd {
 namespace http {
 static const std::string regex = "/eldritchd";
 
-template <class transport>
-static void servlet(typename cxxhttp::http::server<transport>::session &session,
+static void servlet(typename cxxhttp::http::sessionData &session,
                     std::smatch &) {
   std::ostringstream oss("");
 

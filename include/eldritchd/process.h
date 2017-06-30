@@ -1,12 +1,12 @@
-/**\file
+/*
+ * See also:
+ * * Documentation: https://ef.gy/documentation/eldritchd
+ * * Source Code: https://github.com/ef-gy/eldritchd
+ * * Licence Terms: https://github.com/ef-gy/eldritchd/COPYING
  *
- * \copyright
+ * @copyright
  * This file is part of eldritchd, which is released as open source under the
  * terms of an MIT/X11-style licence, described in the COPYING file.
- *
- * \see Documentation: https://ef.gy/documentation/eldritchd
- * \see Source Code: https://github.com/ef-gy/eldritchd
- * \see Licence Terms: https://github.com/ef-gy/eldritchd/COPYING
  */
 
 #if !defined(ELDRITCHD_PROCESS_H)
@@ -16,6 +16,7 @@
 
 #include <ef.gy/cli.h>
 #include <ef.gy/json.h>
+#include <ef.gy/global.h>
 
 #include <prometheus/metric.h>
 
@@ -32,12 +33,47 @@ static prometheus::metric::gauge child_pid(
     {"instance"});
 
 class process {
- public:
-  process(std::vector<std::string> pcmd, std::string pName = "",
-          cxxhttp::service &pService = efgy::global<cxxhttp::service>())
-      : cmd(pcmd), name(pName), service(pService), signals(pService, SIGCHLD) {
+ protected:
+  efgy::beacon<process> beacon;
+
+  static size_t nextInstance(void) {
     static size_t instance = 0;
-    this->instance = instance++;
+    return instance++;
+  }
+
+ public:
+  process(
+      const efgy::json::json &pJSON,
+      cxxhttp::service &pService = efgy::global<cxxhttp::service>(),
+      efgy::beacons<process> &procs = efgy::global<efgy::beacons<process>>())
+      : instance(nextInstance()),
+        service(pService),
+        signals(pService, SIGCHLD),
+        beacon(*this, procs) {
+    efgy::json::json json(pJSON);
+    auto &r = json("process");
+    auto &a = r("command").asArray();
+
+    name = r("name").asString();
+    for (const auto &c : a) {
+      cmd.push_back(c.asString());
+    }
+
+    if (name == "") {
+      name = cmd[0] + "-" + std::to_string(this->instance);
+    }
+  }
+
+  process(
+      const std::vector<std::string> &pcmd, const std::string &pName = "",
+      cxxhttp::service &pService = efgy::global<cxxhttp::service>(),
+      efgy::beacons<process> &procs = efgy::global<efgy::beacons<process>>())
+      : instance(nextInstance()),
+        cmd(pcmd),
+        name(pName),
+        service(pService),
+        signals(pService, SIGCHLD),
+        beacon(*this, procs) {
     if (name == "") {
       name = cmd[0] + "-" + std::to_string(this->instance);
     }
@@ -86,13 +122,17 @@ class process {
     efgy::json::json r;
 
     auto &p = r("process");
-    p("name").toString() = name;
+    p("name") = name;
+    auto &a = p("command").toArray();
+    for (const auto &c : cmd) {
+      a.push_back(c);
+    }
 
     return r;
   }
 
  protected:
-  const std::vector<std::string> cmd;
+  std::vector<std::string> cmd;
   cxxhttp::service &service;
   asio::signal_set signals;
   pid_t pid;
