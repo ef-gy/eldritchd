@@ -15,12 +15,9 @@
 
 #include <prometheus/httpd-metrics.h>
 
-#include <eldritchd/http.h>
+#include <eldritchd/httpd-eldritchd.h>
 
 #include <unistd.h>
-
-static cxxhttp::http::servlet eldritch(eldritchd::http::regex,
-                                       eldritchd::http::servlet);
 
 static efgy::cli::flag<bool> daemonise(
     "daemonise", "Whether or not to have eldritchd run in the background.");
