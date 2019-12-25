@@ -12,12 +12,13 @@
 #if !defined(ELDRITCHD_HTTPD_ELDRITCHD_H)
 #define ELDRITCHD_HTTPD_ELDRITCHD_H
 
+#include <cxxhttp/httpd.h>
 #include <eldritchd/http.h>
 
 namespace eldritchd {
 namespace httpd {
 static cxxhttp::http::servlet eldritch(http::regex, http::servlet);
 }
-}
+}  // namespace eldritchd
 
 #endif

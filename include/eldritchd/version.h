@@ -19,6 +19,6 @@ namespace eldritchd {
  * because I don't believe in sub-versioning.
  */
 static const unsigned int version = 1;
-}
+}  // namespace eldritchd
 
 #endif

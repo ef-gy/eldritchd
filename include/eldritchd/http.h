@@ -30,7 +30,7 @@ static void servlet(typename cxxhttp::http::sessionData &session,
 
   session.reply(200, oss.str());
 }
-}
-}
+}  // namespace http
+}  // namespace eldritchd
 
 #endif

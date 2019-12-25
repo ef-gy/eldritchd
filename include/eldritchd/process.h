@@ -15,8 +15,8 @@
 #include <cxxhttp/network.h>
 
 #include <ef.gy/cli.h>
-#include <ef.gy/json.h>
 #include <ef.gy/global.h>
+#include <ef.gy/json.h>
 
 #include <prometheus/metric.h>
 
@@ -151,6 +151,6 @@ class process {
     }
   }
 };
-}
+}  // namespace eldritchd
 
 #endif
