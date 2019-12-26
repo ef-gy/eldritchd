@@ -60,7 +60,11 @@ class process {
     }
 
     if (name == "") {
-      name = cmd[0] + "-" + std::to_string(this->instance);
+      if (cmd.size() > 0) {
+        name = cmd[0] + "-" + std::to_string(this->instance);
+      } else {
+	name = "empty-command";
+      }
     }
   }
 
@@ -86,6 +90,10 @@ class process {
   }
 
   bool run(void) {
+    if (cmd.size() == 0) {
+      return false;
+    }
+
     service.notify_fork(asio::io_service::fork_prepare);
     switch (pid = fork()) {
       case -1:
