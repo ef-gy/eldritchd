@@ -1,0 +1,6 @@
+{
+  "process": {
+    "name": "sleep",
+    "command": ["/bin/sh", "-c", "sleep 10"]
+  }
+}

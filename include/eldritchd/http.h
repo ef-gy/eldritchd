@@ -26,7 +26,13 @@ static const std::string regex = "/eldritchd";
 
 static void servlet(typename cxxhttp::http::sessionData &session,
                     std::smatch &) {
+  auto &processes = efgy::global<efgy::beacons<process>>();
+
   std::ostringstream oss("");
+
+  for (const auto &p : processes) {
+    oss << efgy::json::to_string(p->json());
+  }
 
   session.reply(200, oss.str());
 }

@@ -4,3 +4,6 @@ eldritchd
 doxyfile
 *.tag
 documentation
+*.swp
+*.gcda
+*.gcno

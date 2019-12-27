@@ -51,6 +51,7 @@ class process {
         signals(pService, SIGCHLD),
         beacon(*this, procs) {
     efgy::json::json json(pJSON);
+
     auto &r = json("process");
     auto &a = r("command").asArray();
 
@@ -63,7 +64,7 @@ class process {
       if (cmd.size() > 0) {
         name = cmd[0] + "-" + std::to_string(this->instance);
       } else {
-	name = "empty-command";
+        name = "empty-command";
       }
     }
   }
@@ -79,7 +80,11 @@ class process {
         signals(pService, SIGCHLD),
         beacon(*this, procs) {
     if (name == "") {
-      name = cmd[0] + "-" + std::to_string(this->instance);
+      if (cmd.size() > 0) {
+        name = cmd[0] + "-" + std::to_string(this->instance);
+      } else {
+        name = "empty-command";
+      }
     }
   }
 
@@ -126,7 +131,7 @@ class process {
     return false;
   }
 
-  efgy::json::json json(void) {
+  efgy::json::json json(void) const {
     efgy::json::json r;
 
     auto &p = r("process");
@@ -151,8 +156,6 @@ class process {
     int status;
     waitpid(pid, &status, WNOHANG);
     if (WIFEXITED(status) || WIFSIGNALED(status)) {
-      std::cout << "It died - respawning.\n";
-
       run();
     } else {
       signals.async_wait([this](const asio::error_code &, int) { sigchld(); });
