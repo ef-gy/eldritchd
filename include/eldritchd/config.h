@@ -23,6 +23,9 @@
 #include <eldritchd/context.h>
 #include <eldritchd/process.h>
 
+#include <fstream>
+#include <streambuf>
+
 namespace eldritchd {
 namespace config {
 using efgy::json::json;
@@ -114,8 +117,12 @@ static void merge(const std::string &j,
 }
 
 static void mergeFromFile(const std::string &file,
-                          context &pContext = efgy::global<context>()) {}
-
+                          context &pContext = efgy::global<context>()) {
+  std::ifstream f(file);
+  std::string s((std::istreambuf_iterator<char>(f)),
+                std::istreambuf_iterator<char>());
+  merge(s, pContext);
+}
 }  // namespace config
 }  // namespace eldritchd
 

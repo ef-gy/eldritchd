@@ -1,0 +1,24 @@
+{
+   "processes" : [
+      {
+         "process" : {
+            "name" : "sleep",
+            "command" : [
+               "/bin/sh",
+               "-c",
+               "sleep 10"
+            ]
+         }
+      },
+      {
+         "process" : {
+            "name" : "sleep-1",
+            "command" : [
+               "/bin/sh",
+               "-c",
+               "sleep 4; echo foo"
+            ]
+         }
+      }
+   ]
+}
