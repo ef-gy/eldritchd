@@ -16,6 +16,8 @@
 #define ELDRITCHD_HTTPD_ELDRITCHD_H
 
 #include <cxxhttp/httpd.h>
+
+#include <eldritchd/config.h>
 #include <eldritchd/process.h>
 
 namespace eldritchd {
@@ -46,24 +48,26 @@ static const cxxhttp::http::headers negotiations = {
  */
 static const char *description = "Get current configuration of eldritchd.";
 
+/* HTTP servlet.
+ * @session The HTTP session to respond to queries from.
+ *
+ * This servlet allows querying configuration information from a running
+ * eldritchd instance.
+ */
 static void servlet(typename cxxhttp::http::sessionData &session,
                     std::smatch &) {
-  using efgy::json::json;
-  using efgy::json::to_string;
-
   auto &processes = efgy::global<efgy::beacons<process>>();
 
-  json config;
-  auto &procs = config("processes").toArray();
+  config::json rv;
+  rv("processes") = config::to_json(processes);
 
-  for (const auto &p : processes) {
-    const auto &pj = json(*p);
-    procs.push_back(pj);
-  }
-
-  session.reply(200, to_string(config));
+  session.reply(200, config::to_string(rv));
 }
 
+/* Default servlet.
+ *
+ * Default global instance of the configuration servlet.
+ */
 static cxxhttp::http::servlet eldritch(resource, servlet, method, negotiations,
                                        description);
 }  // namespace httpd

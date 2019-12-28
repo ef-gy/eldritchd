@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (options.remainder.size() > 0) {
-    new eldritchd::process(options.remainder, name);
+    new eldritchd::process(eldritchd::config::to_json(options.remainder, name));
   }
 
   if (procs.size() == 0) {
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     return 2;
   } else {
     for (auto &proc : procs) {
-      if (!proc->run()) {
+      if (!(*proc)()) {
         return 1;
       }
     }

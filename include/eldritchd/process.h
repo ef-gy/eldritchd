@@ -43,10 +43,7 @@ class process {
       const efgy::json::json &pJSON,
       cxxhttp::service &pService = efgy::global<cxxhttp::service>(),
       efgy::beacons<process> &procs = efgy::global<efgy::beacons<process>>())
-      : instance(nextInstance()),
-        service(pService),
-        signals(pService, SIGCHLD),
-        beacon(*this, procs) {
+      : service(pService), signals(pService, SIGCHLD), beacon(*this, procs) {
     efgy::json::json json(pJSON);
 
     auto &r = json("process");
@@ -59,39 +56,18 @@ class process {
 
     if (name == "") {
       if (cmd.size() > 0) {
-        name = cmd[0] + "-" + std::to_string(this->instance);
+        name = cmd[0];
       } else {
         name = "empty-command";
       }
     }
   }
 
-  process(
-      const std::vector<std::string> &pcmd, const std::string &pName = "",
-      cxxhttp::service &pService = efgy::global<cxxhttp::service>(),
-      efgy::beacons<process> &procs = efgy::global<efgy::beacons<process>>())
-      : instance(nextInstance()),
-        cmd(pcmd),
-        name(pName),
-        service(pService),
-        signals(pService, SIGCHLD),
-        beacon(*this, procs) {
-    if (name == "") {
-      if (cmd.size() > 0) {
-        name = cmd[0] + "-" + std::to_string(this->instance);
-      } else {
-        name = "empty-command";
-      }
-    }
-  }
-
-  static void closeFDs(int from = 3) {
-    for (int fd = from; fd < sysconf(_SC_OPEN_MAX); fd++) {
-      close(fd);
-    }
-  }
-
-  bool run(void) {
+  /* Run process.
+   *
+   * Spawns a subprocess and tries to execute it as a new binary.
+   */
+  bool operator()(void) {
     if (cmd.size() == 0) {
       return false;
     }
@@ -146,21 +122,34 @@ class process {
   cxxhttp::service &service;
   asio::signal_set signals;
   pid_t pid;
-  size_t instance;
   std::string name;
 
   efgy::beacon<process> beacon;
 
-  static size_t nextInstance(void) {
-    static size_t instance = 0;
-    return instance++;
+  /* Close all file descriptors.
+   * @from minimum FD to close; the default of 3 closes non-STDIO descriptors.
+   *
+   * Processes tend to act strangely when superfluous file descriptors are open.
+   * This function is called after fork()'ing off a new process, and by default
+   * will close all non-STDIO file descriptors, leaving STDIN, STDOUT and STDERR
+   * untouched.
+   */
+  static void closeFDs(int from = 3) {
+    for (int fd = from; fd < sysconf(_SC_OPEN_MAX); fd++) {
+      close(fd);
+    }
   }
 
+  /* SIGCHLD handler.
+   *
+   * We want our processes to be running continuously, so respawn them if they
+   * die. If spawning them fails this would put them in an unmonitored state.
+   */
   void sigchld(void) {
     int status;
     waitpid(pid, &status, WNOHANG);
     if (WIFEXITED(status) || WIFSIGNALED(status)) {
-      run();
+      (*this)();
     } else {
       signals.async_wait([this](const asio::error_code &, int) { sigchld(); });
     }
