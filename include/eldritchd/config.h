@@ -20,6 +20,7 @@
 #include <ef.gy/global.h>
 #include <ef.gy/json.h>
 
+#include <eldritchd/context.h>
 #include <eldritchd/process.h>
 
 namespace eldritchd {
@@ -77,6 +78,23 @@ static const json to_json(const efgy::beacons<process> &processes) {
 
   return procs;
 }
+
+/* Merge in new configuration data from string.
+ * @j The data to merge, as a JSON string.
+ * @pContext The context to use when creating new processes.
+ *
+ * Parses the input JSON data and merges in new processes.
+ */
+static void merge(const std::string &j,
+                  context &pContext = efgy::global<context>()) {
+  efgy::json::json v;
+  efgy::json::parse(j, v);
+  new eldritchd::process(v, pContext);
+}
+
+static void mergeFromFile(const std::string &file,
+                          context &pContext = efgy::global<context>()) {}
+
 }  // namespace config
 }  // namespace eldritchd
 

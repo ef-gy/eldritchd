@@ -12,10 +12,9 @@
 #if !defined(ELDRITCHD_PROCESS_H)
 #define ELDRITCHD_PROCESS_H
 
-#include <cxxhttp/network.h>
+#include <eldritchd/context.h>
 
 #include <ef.gy/cli.h>
-#include <ef.gy/global.h>
 #include <ef.gy/json.h>
 
 #include <prometheus/metric.h>
@@ -39,11 +38,11 @@ static prometheus::metric::gauge child_pid(
  */
 class process {
  public:
-  process(
-      const efgy::json::json &pJSON,
-      cxxhttp::service &pService = efgy::global<cxxhttp::service>(),
-      efgy::beacons<process> &procs = efgy::global<efgy::beacons<process>>())
-      : service(pService), signals(pService, SIGCHLD), beacon(*this, procs) {
+  process(const efgy::json::json &pJSON,
+          context &pContext = efgy::global<context>())
+      : context_(pContext),
+        signals(context_.service, SIGCHLD),
+        beacon(*this, context_.processes) {
     efgy::json::json json(pJSON);
 
     auto &r = json("process");
@@ -72,12 +71,12 @@ class process {
       return false;
     }
 
-    service.notify_fork(asio::io_service::fork_prepare);
+    context_.service.notify_fork(asio::io_service::fork_prepare);
     switch (pid = fork()) {
       case -1:
         return false;
       case 0:
-        service.notify_fork(asio::io_service::fork_child);
+        context_.service.notify_fork(asio::io_service::fork_child);
         closeFDs();
         {
           char **argv = new char *[(cmd.size() + 1)];
@@ -90,7 +89,7 @@ class process {
         }
         break;
       default:
-        service.notify_fork(asio::io_service::fork_parent);
+        context_.service.notify_fork(asio::io_service::fork_parent);
 
         signals.async_wait(
             [this](const asio::error_code &, int) { sigchld(); });
@@ -118,8 +117,8 @@ class process {
   }
 
  protected:
+  context &context_;
   std::vector<std::string> cmd;
-  cxxhttp::service &service;
   asio::signal_set signals;
   pid_t pid;
   std::string name;
@@ -127,12 +126,13 @@ class process {
   efgy::beacon<process> beacon;
 
   /* Close all file descriptors.
-   * @from minimum FD to close; the default of 3 closes non-STDIO descriptors.
+   * @from minimum FD to close; the default of 3 closes non-STDIO
+   * descriptors.
    *
-   * Processes tend to act strangely when superfluous file descriptors are open.
-   * This function is called after fork()'ing off a new process, and by default
-   * will close all non-STDIO file descriptors, leaving STDIN, STDOUT and STDERR
-   * untouched.
+   * Processes tend to act strangely when superfluous file descriptors are
+   * open. This function is called after fork()'ing off a new process, and
+   * by default will close all non-STDIO file descriptors, leaving STDIN,
+   * STDOUT and STDERR untouched.
    */
   static void closeFDs(int from = 3) {
     for (int fd = from; fd < sysconf(_SC_OPEN_MAX); fd++) {
@@ -142,8 +142,9 @@ class process {
 
   /* SIGCHLD handler.
    *
-   * We want our processes to be running continuously, so respawn them if they
-   * die. If spawning them fails this would put them in an unmonitored state.
+   * We want our processes to be running continuously, so respawn them if
+   * they die. If spawning them fails this would put them in an unmonitored
+   * state.
    */
   void sigchld(void) {
     int status;
