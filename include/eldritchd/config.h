@@ -79,6 +79,27 @@ static const json to_json(const efgy::beacons<process> &processes) {
   return procs;
 }
 
+/* Merge in new configuration data from JSON value.
+ * @v The data to merge, as a JSON value.
+ * @pContext The context to use when creating new processes.
+ *
+ * Parses the input JSON data and merges in new processes.
+ */
+static void merge(const json &v, context &pContext = efgy::global<context>()) {
+  json vc = v;
+  auto &procs = vc("processes").asArray();
+  if (procs.size() > 0) {
+    for (const auto &p : procs) {
+      new eldritchd::process(p, pContext);
+    }
+  }
+
+  auto &p = vc("process");
+  if (p.asObject().size() > 0) {
+    new eldritchd::process(v, pContext);
+  }
+}
+
 /* Merge in new configuration data from string.
  * @j The data to merge, as a JSON string.
  * @pContext The context to use when creating new processes.
@@ -87,9 +108,9 @@ static const json to_json(const efgy::beacons<process> &processes) {
  */
 static void merge(const std::string &j,
                   context &pContext = efgy::global<context>()) {
-  efgy::json::json v;
+  json v;
   efgy::json::parse(j, v);
-  new eldritchd::process(v, pContext);
+  merge(v, pContext);
 }
 
 static void mergeFromFile(const std::string &file,
