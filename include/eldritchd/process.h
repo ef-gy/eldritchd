@@ -32,15 +32,12 @@ static prometheus::metric::gauge child_pid(
     "eldritchd_child_pid", "Child process PID, by instance label.",
     {"instance"});
 
+/* A supervised process
+ *
+ * This class is used to hold all the metadata necessary to spawn a single
+ * process and keep it alive when it fails.
+ */
 class process {
- protected:
-  efgy::beacon<process> beacon;
-
-  static size_t nextInstance(void) {
-    static size_t instance = 0;
-    return instance++;
-  }
-
  public:
   process(
       const efgy::json::json &pJSON,
@@ -131,7 +128,7 @@ class process {
     return false;
   }
 
-  efgy::json::json json(void) const {
+  operator const efgy::json::json(void) const {
     efgy::json::json r;
 
     auto &p = r("process");
@@ -151,6 +148,13 @@ class process {
   pid_t pid;
   size_t instance;
   std::string name;
+
+  efgy::beacon<process> beacon;
+
+  static size_t nextInstance(void) {
+    static size_t instance = 0;
+    return instance++;
+  }
 
   void sigchld(void) {
     int status;
