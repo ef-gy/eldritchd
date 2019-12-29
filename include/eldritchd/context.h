@@ -31,7 +31,7 @@ class context {
   context(
       tService &pService = efgy::global<tService>(),
       efgy::beacons<tProcess> &procs = efgy::global<efgy::beacons<tProcess>>())
-      : service(pService), processes(procs) {}
+      : service(pService), processes(procs), signals_(service, SIGCHLD) {}
 
   void update(void) {
     for (auto &p : processes) {
@@ -45,9 +45,29 @@ class context {
         (*p)();
       }
     }
+
+    signals_.async_wait([this](const asio::error_code &, int) { sigchld(); });
   }
 
   bool haveTasks(void) const { return processes.size() > 0; }
+
+ protected:
+  asio::signal_set signals_;
+
+  /* SIGCHLD handler.
+   *
+   * We want our processes to be running continuously, so respawn them if
+   * they die. If spawning them fails this would put them in an unmonitored
+   * state.
+   *
+   * We use one SIGCHLD handler for all processes and just tell the process
+   * class to check all of them. This might do extra syscalls, but skipping a
+   * handler won't cause issues this way.
+   */
+  void sigchld(void) {
+    update();
+    run();
+  }
 };
 }  // namespace eldritchd
 

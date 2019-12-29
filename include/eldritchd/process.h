@@ -44,10 +44,7 @@ class process {
 
   process(const efgy::json::json &pJSON,
           context &pContext = efgy::global<context>())
-      : context_(pContext),
-        status_(idle),
-        signals(context_.service, SIGCHLD),
-        beacon(*this, context_.processes) {
+      : context_(pContext), status_(idle), beacon(*this, context_.processes) {
     efgy::json::json json(pJSON);
 
     auto &r = json("process");
@@ -97,9 +94,6 @@ class process {
         context_.service.notify_fork(asio::io_service::fork_parent);
         status_ = running;
 
-        signals.async_wait(
-            [this](const asio::error_code &, int) { sigchld(); });
-
         spawns.labels({name}).inc();
         child_pid.labels({name}).set(pid);
 
@@ -123,9 +117,9 @@ class process {
   }
 
   void update(void) {
-    int status;
-    waitpid(pid, &status, WNOHANG);
-    if (WIFEXITED(status) || WIFSIGNALED(status)) {
+    int st;
+    waitpid(pid, &st, WNOHANG);
+    if (WIFEXITED(st) || WIFSIGNALED(st)) {
       status_ = dead;
     }
   }
@@ -136,7 +130,6 @@ class process {
   context &context_;
   enum status status_;
   std::vector<std::string> cmd;
-  asio::signal_set signals;
   pid_t pid;
   std::string name;
 
@@ -154,24 +147,6 @@ class process {
   static void closeFDs(int from = 3) {
     for (int fd = from; fd < sysconf(_SC_OPEN_MAX); fd++) {
       close(fd);
-    }
-  }
-
-  /* SIGCHLD handler.
-   *
-   * We want our processes to be running continuously, so respawn them if
-   * they die. If spawning them fails this would put them in an unmonitored
-   * state.
-   */
-  void sigchld(void) {
-    if (status_ == running) {
-      update();
-    }
-
-    if (status_ == dead) {
-      (*this)();
-    } else {
-      signals.async_wait([this](const asio::error_code &, int) { sigchld(); });
     }
   }
 };
