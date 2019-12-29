@@ -88,7 +88,10 @@ static const json to_json(const efgy::beacons<process> &processes) {
  *
  * Parses the input JSON data and merges in new processes.
  */
-static void merge(const json &v, context &pContext = efgy::global<context>()) {
+template <typename tService, typename tProcess>
+static void merge(const json &v,
+                  context<tService, tProcess> &pContext =
+                      efgy::global<context<tService, tProcess>>()) {
   json vc = v;
   auto &procs = vc("processes").asArray();
   if (procs.size() > 0) {
@@ -109,15 +112,19 @@ static void merge(const json &v, context &pContext = efgy::global<context>()) {
  *
  * Parses the input JSON data and merges in new processes.
  */
+template <typename tService, typename tProcess>
 static void merge(const std::string &j,
-                  context &pContext = efgy::global<context>()) {
+                  context<tService, tProcess> &pContext =
+                      efgy::global<context<tService, tProcess>>()) {
   json v;
   efgy::json::parse(j, v);
   merge(v, pContext);
 }
 
+template <typename tService, typename tProcess>
 static void mergeFromFile(const std::string &file,
-                          context &pContext = efgy::global<context>()) {
+                          context<tService, tProcess> &pContext =
+                              efgy::global<context<tService, tProcess>>()) {
   std::ifstream f(file);
   std::string s((std::istreambuf_iterator<char>(f)),
                 std::istreambuf_iterator<char>());

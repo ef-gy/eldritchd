@@ -22,17 +22,32 @@
 #include <ef.gy/global.h>
 
 namespace eldritchd {
-class process;
-
+template <typename tService, typename tProcess>
 class context {
  public:
-  cxxhttp::service &service;
-  efgy::beacons<process> &processes;
+  tService &service;
+  efgy::beacons<tProcess> &processes;
 
   context(
-      cxxhttp::service &pService = efgy::global<cxxhttp::service>(),
-      efgy::beacons<process> &procs = efgy::global<efgy::beacons<process>>())
+      tService &pService = efgy::global<tService>(),
+      efgy::beacons<tProcess> &procs = efgy::global<efgy::beacons<tProcess>>())
       : service(pService), processes(procs) {}
+
+  void update(void) {
+    for (auto &p : processes) {
+      p->update();
+    }
+  }
+
+  void run(void) {
+    for (auto &p : processes) {
+      if (p->status() != tProcess::running) {
+        (*p)();
+      }
+    }
+  }
+
+  bool haveTasks(void) const { return processes.size() > 0; }
 };
 }  // namespace eldritchd
 

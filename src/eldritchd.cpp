@@ -35,40 +35,34 @@ static flag<std::string> file("file", "configuration file to use");
 }  // namespace cli
 
 int main(int argc, char *argv[]) {
-  auto &service = efgy::global<cxxhttp::service>();
+  auto &context = efgy::global<eldritchd::process::context>();
   efgy::cli::options options(argc, argv);
 
-  auto &procs = efgy::global<efgy::beacons<eldritchd::process>>();
   const std::string &json = cli::json;
   const std::string &file = cli::file;
 
   if (!json.empty()) {
-    eldritchd::config::merge(json);
+    eldritchd::config::merge(json, context);
   }
 
   if (options.remainder.size() > 0) {
-    new eldritchd::process(
-        eldritchd::config::to_json(options.remainder, cli::name));
+    eldritchd::config::merge(
+        eldritchd::config::to_json(options.remainder, cli::name), context);
   }
 
   if (!file.empty()) {
-    eldritchd::config::mergeFromFile(file);
+    eldritchd::config::mergeFromFile(file, context);
   }
 
-  if (procs.size() == 0) {
+  if (!context.haveTasks()) {
     std::cerr << "\nThe stars aren't right!\n";
     return 3;
   } else if (cli::daemonise && daemon(0, 0)) {
     std::cerr << "Couldn't turn into a daemon for some reason.\n";
     return 2;
   } else {
-    for (auto &proc : procs) {
-      if (!(*proc)()) {
-        return 1;
-      }
-    }
-
-    service.run();
+    context.run();
+    context.service.run();
   }
 
   return 0;

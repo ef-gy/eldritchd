@@ -38,9 +38,14 @@ static prometheus::metric::gauge child_pid(
  */
 class process {
  public:
+  enum status { idle, running, dead };
+
+  using context = eldritchd::context<cxxhttp::service, process>;
+
   process(const efgy::json::json &pJSON,
           context &pContext = efgy::global<context>())
       : context_(pContext),
+        status_(idle),
         signals(context_.service, SIGCHLD),
         beacon(*this, context_.processes) {
     efgy::json::json json(pJSON);
@@ -90,6 +95,7 @@ class process {
         break;
       default:
         context_.service.notify_fork(asio::io_service::fork_parent);
+        status_ = running;
 
         signals.async_wait(
             [this](const asio::error_code &, int) { sigchld(); });
@@ -116,8 +122,19 @@ class process {
     return r;
   }
 
+  void update(void) {
+    int status;
+    waitpid(pid, &status, WNOHANG);
+    if (WIFEXITED(status) || WIFSIGNALED(status)) {
+      status_ = dead;
+    }
+  }
+
+  enum status status(void) const { return status_; }
+
  protected:
   context &context_;
+  enum status status_;
   std::vector<std::string> cmd;
   asio::signal_set signals;
   pid_t pid;
@@ -147,9 +164,11 @@ class process {
    * state.
    */
   void sigchld(void) {
-    int status;
-    waitpid(pid, &status, WNOHANG);
-    if (WIFEXITED(status) || WIFSIGNALED(status)) {
+    if (status_ == running) {
+      update();
+    }
+
+    if (status_ == dead) {
       (*this)();
     } else {
       signals.async_wait([this](const asio::error_code &, int) { sigchld(); });
