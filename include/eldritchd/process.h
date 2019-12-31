@@ -112,12 +112,30 @@ class process {
     return r;
   }
 
-  void update(void) {
-    int st;
-    waitpid(pid, &st, WNOHANG);
-    if (WIFEXITED(st) || WIFSIGNALED(st)) {
-      status_ = dead;
+  /* Update status of child process.
+   *
+   * Calls waitpid() for this process and updates `status_` accordingly.
+   *
+   * @returns `this->status_`.
+   */
+  enum status update(void) {
+    int st = 0;
+    std::cerr << "checking pid=" << pid << "\n";
+    pid_t p = waitpid(pid, &st, WNOHANG);
+    if (p == 0 || p == 1) {
+      // TODO: log an error of some form here.
+    } else if (p == pid) {
+      if (WIFEXITED(st) || WIFSIGNALED(st)) {
+        status_ = dead;
+        std::cerr << "pid=" << pid << "; is now dead\n";
+      } else {
+        std::cerr << "pid=" << pid << "; not dead: " << st << "\n";
+      }
+    } else {
+      // this branch should be impossible.
     }
+
+    return status_;
   }
 
   enum status status(void) const { return status_; }
