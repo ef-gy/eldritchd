@@ -120,16 +120,13 @@ class process {
    */
   enum status update(void) {
     int st = 0;
-    std::cerr << "checking pid=" << pid << "\n";
     pid_t p = waitpid(pid, &st, WNOHANG);
     if (p == 0 || p == 1) {
       // TODO: log an error of some form here.
     } else if (p == pid) {
       if (WIFEXITED(st) || WIFSIGNALED(st)) {
         status_ = dead;
-        std::cerr << "pid=" << pid << "; is now dead\n";
       } else {
-        std::cerr << "pid=" << pid << "; not dead: " << st << "\n";
       }
     } else {
       // this branch should be impossible.
