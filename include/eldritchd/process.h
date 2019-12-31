@@ -42,7 +42,7 @@ class process {
 
   process(const efgy::json::json &pJSON,
           context &pContext = efgy::global<context>())
-      : context_(pContext), status_(idle), beacon(*this, context_.processes) {
+      : context_(pContext), status_(idle), beacon(*this, context_.processes()) {
     efgy::json::json json(pJSON);
 
     auto &r = json("process");

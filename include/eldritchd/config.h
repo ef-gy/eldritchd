@@ -82,16 +82,33 @@ static const json to_json(const efgy::beacons<process> &processes) {
   return procs;
 }
 
+/* Create JSON object from context.
+ * @pContext the context to work on.
+ *
+ * This creates a JSON representation of the full daemon context, which can be
+ * used to recreate the current instance at will at a later point in time.
+ *
+ * @returns a JSON object with enough data to reconstruct the running process.
+ */
+template <typename service, typename process>
+static const json to_json(const context<service, process> &pContext) {
+  json rv;
+
+  rv("processes") = to_json(pContext.processes());
+
+  return rv;
+}
+
 /* Merge in new configuration data from JSON value.
  * @v The data to merge, as a JSON value.
  * @pContext The context to use when creating new processes.
  *
  * Parses the input JSON data and merges in new processes.
  */
-template <typename tService, typename tProcess>
+template <typename service, typename process>
 static void merge(const json &v,
-                  context<tService, tProcess> &pContext =
-                      efgy::global<context<tService, tProcess>>()) {
+                  context<service, process> &pContext =
+                      efgy::global<context<service, process>>()) {
   json vc = v;
   auto &procs = vc("processes").asArray();
   if (procs.size() > 0) {
@@ -112,19 +129,19 @@ static void merge(const json &v,
  *
  * Parses the input JSON data and merges in new processes.
  */
-template <typename tService, typename tProcess>
+template <typename service, typename process>
 static void merge(const std::string &j,
-                  context<tService, tProcess> &pContext =
-                      efgy::global<context<tService, tProcess>>()) {
+                  context<service, process> &pContext =
+                      efgy::global<context<service, process>>()) {
   json v;
   efgy::json::parse(j, v);
   merge(v, pContext);
 }
 
-template <typename tService, typename tProcess>
+template <typename service, typename process>
 static void mergeFromFile(const std::string &file,
-                          context<tService, tProcess> &pContext =
-                              efgy::global<context<tService, tProcess>>()) {
+                          context<service, process> &pContext =
+                              efgy::global<context<service, process>>()) {
   std::ifstream f(file);
   std::string s((std::istreambuf_iterator<char>(f)),
                 std::istreambuf_iterator<char>());

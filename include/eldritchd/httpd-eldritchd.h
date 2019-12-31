@@ -56,12 +56,9 @@ static const char *description = "Get current configuration of eldritchd.";
  */
 static void servlet(typename cxxhttp::http::sessionData &session,
                     std::smatch &) {
-  auto &processes = efgy::global<efgy::beacons<process>>();
+  auto &ctx = efgy::global<process::context>();
 
-  config::json rv;
-  rv("processes") = config::to_json(processes);
-
-  session.reply(200, config::to_string(rv));
+  session.reply(200, config::to_string(config::to_json(ctx)));
 }
 
 /* Default servlet.

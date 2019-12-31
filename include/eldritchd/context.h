@@ -27,25 +27,33 @@
 #include <unistd.h>
 
 namespace eldritchd {
-template <typename tService, typename tProcess>
+template <typename service, typename process>
 class context {
  public:
-  efgy::beacons<tProcess> &processes;
+  context(service &pService = efgy::global<service>(),
+          efgy::beacons<process> &pProcesses =
+              efgy::global<efgy::beacons<process>>())
+      : service_(pService),
+        processes_(pProcesses),
+        signals_(service_, SIGCHLD) {}
 
-  context(
-      tService &service = efgy::global<tService>(),
-      efgy::beacons<tProcess> &procs = efgy::global<efgy::beacons<tProcess>>())
-      : service_(service), processes(procs), signals_(service_, SIGCHLD) {}
+  /* Get reference to full list of processes.
+   *
+   * This should only be used to construct beacons for new processes.
+   *
+   * @returns `this->processes_`.
+   */
+  efgy::beacons<process> &processes(void) const { return processes_; }
 
   void update(void) {
-    for (auto &p : processes) {
+    for (auto &p : processes_) {
       p->update();
     }
   }
 
   void run(void) {
-    for (auto &p : processes) {
-      if (p->status() != tProcess::running) {
+    for (auto &p : processes_) {
+      if (p->status() != process::running) {
         (*p)();
       }
     }
@@ -86,7 +94,7 @@ class context {
     return pid;
   }
 
-  bool haveTasks(void) const { return processes.size() > 0; }
+  bool haveTasks(void) const { return processes_.size() > 0; }
 
  protected:
   /* libasio I/O service.
@@ -95,7 +103,8 @@ class context {
    * cxxhttp, which is based on libasio. The I/O service has functions for
    * dealing with signals, so this is quite convenient.
    */
-  tService &service_;
+  service &service_;
+  efgy::beacons<process> &processes_;
   asio::signal_set signals_;
 
   /* SIGCHLD handler.
