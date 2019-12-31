@@ -18,6 +18,8 @@
 #if !defined(ELDRITCHD_CONTEXT_H)
 #define ELDRITCHD_CONTEXT_H
 
+#define _BSD_SOURCE
+
 #include <cxxhttp/network.h>
 #include <ef.gy/global.h>
 
@@ -28,13 +30,12 @@ namespace eldritchd {
 template <typename tService, typename tProcess>
 class context {
  public:
-  tService &service;
   efgy::beacons<tProcess> &processes;
 
   context(
-      tService &pService = efgy::global<tService>(),
+      tService &service = efgy::global<tService>(),
       efgy::beacons<tProcess> &procs = efgy::global<efgy::beacons<tProcess>>())
-      : service(pService), processes(procs), signals_(service, SIGCHLD) {}
+      : service_(service), processes(procs), signals_(service_, SIGCHLD) {}
 
   void update(void) {
     for (auto &p : processes) {
@@ -52,6 +53,14 @@ class context {
     signals_.async_wait([this](const asio::error_code &, int) { sigchld(); });
   }
 
+  /* Call libasio main loop.
+   *
+   * Calls service_.run(), which is basically libasio's main loop. This won't
+   * usually return, unless there's absolutely nothing to do and no daemons to
+   * take care of.
+   */
+  void loop(void) { service_.run(); }
+
   /* `fork()` syscall wrapper.
    *
    * Ensures that libasio is aware of the `fork()` call and otherwise just calls
@@ -62,15 +71,15 @@ class context {
   int fork(void) {
     pid_t pid;
 
-    service.notify_fork(asio::io_service::fork_prepare);
+    service_.notify_fork(asio::io_service::fork_prepare);
     switch (pid = ::fork()) {
       case -1:
         break;
       case 0:
-        service.notify_fork(asio::io_service::fork_child);
+        service_.notify_fork(asio::io_service::fork_child);
         break;
       default:
-        service.notify_fork(asio::io_service::fork_parent);
+        service_.notify_fork(asio::io_service::fork_parent);
         break;
     }
 
@@ -80,6 +89,13 @@ class context {
   bool haveTasks(void) const { return processes.size() > 0; }
 
  protected:
+  /* libasio I/O service.
+   *
+   * We use this instead of low-level primitives because we also integrate with
+   * cxxhttp, which is based on libasio. The I/O service has functions for
+   * dealing with signals, so this is quite convenient.
+   */
+  tService &service_;
   asio::signal_set signals_;
 
   /* SIGCHLD handler.

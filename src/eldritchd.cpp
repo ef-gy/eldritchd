@@ -10,7 +10,6 @@
  */
 
 #define ASIO_DISABLE_THREADS
-#define _BSD_SOURCE
 #include <cxxhttp/httpd.h>
 
 #include <prometheus/httpd-metrics.h>
@@ -62,7 +61,7 @@ int main(int argc, char *argv[]) {
     return 2;
   } else {
     context.run();
-    context.service.run();
+    context.loop();
   }
 
   return 0;
