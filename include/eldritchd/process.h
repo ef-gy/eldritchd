@@ -19,9 +19,7 @@
 
 #include <prometheus/metric.h>
 
-#include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
 namespace eldritchd {
 static prometheus::metric::counter spawns(
@@ -73,12 +71,11 @@ class process {
       return false;
     }
 
-    context_.service.notify_fork(asio::io_service::fork_prepare);
-    switch (pid = fork()) {
+    switch (pid = context_.fork()) {
       case -1:
-        return false;
+        // an error occurred, so we break out and return false later.
+        break;
       case 0:
-        context_.service.notify_fork(asio::io_service::fork_child);
         closeFDs();
         {
           char **argv = new char *[(cmd.size() + 1)];
@@ -91,7 +88,6 @@ class process {
         }
         break;
       default:
-        context_.service.notify_fork(asio::io_service::fork_parent);
         status_ = running;
 
         spawns.labels({name}).inc();

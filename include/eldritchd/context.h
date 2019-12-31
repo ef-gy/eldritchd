@@ -21,6 +21,9 @@
 #include <cxxhttp/network.h>
 #include <ef.gy/global.h>
 
+#include <sys/types.h>
+#include <unistd.h>
+
 namespace eldritchd {
 template <typename tService, typename tProcess>
 class context {
@@ -47,6 +50,31 @@ class context {
     }
 
     signals_.async_wait([this](const asio::error_code &, int) { sigchld(); });
+  }
+
+  /* `fork()` syscall wrapper.
+   *
+   * Ensures that libasio is aware of the `fork()` call and otherwise just calls
+   * that function.
+   *
+   * @returns Same as `fork()`.
+   */
+  int fork(void) {
+    pid_t pid;
+
+    service.notify_fork(asio::io_service::fork_prepare);
+    switch (pid = ::fork()) {
+      case -1:
+        break;
+      case 0:
+        service.notify_fork(asio::io_service::fork_child);
+        break;
+      default:
+        service.notify_fork(asio::io_service::fork_parent);
+        break;
+    }
+
+    return pid;
   }
 
   bool haveTasks(void) const { return processes.size() > 0; }
